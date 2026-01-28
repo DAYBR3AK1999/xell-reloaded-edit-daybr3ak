@@ -241,6 +241,7 @@ int start(int pir, unsigned long hrmor, unsigned long pvr)
 
 	secondary_hold_addr = 0;
 
+#ifdef HACK_JTAG
 	//execption vector
 	int exc[] = {
 		EX_RESET, EX_MACHINE_CHECK, EX_DSI, EX_DATA_SEGMENT,
@@ -251,6 +252,7 @@ int start(int pir, unsigned long hrmor, unsigned long pvr)
 	};
 
 	int i;
+#endif
 		
 	/* initialize BSS first. DO NOT INSERT CODE BEFORE THIS! */
 	unsigned char *p = (unsigned char*)bss_start;
@@ -259,34 +261,22 @@ int start(int pir, unsigned long hrmor, unsigned long pvr)
 #ifdef CYGNOS
 	/* set UART to 38400, 8, N, 1 */
 	*(volatile uint32_t*)0x80000200ea00101c = 0xae010000;
-#else
-	/* set UART to 115400, 8, N, 1 */
-	*(volatile uint32_t*)0x80000200ea00101c = 0xe6010000;
 #endif
 
 	printf("\nXeLL - First stage\n");
 
-
-	//
-	// Have a look and see if thread 0 is started.
-	// If so, XeLL is starting on a JTAG or from
-	// the dashboard and can go down the catch
-	// codepath rather than the SoC init path
-	//
-	void *irq_cntrl = (void*)0x8000020000050000;
-
-	if(0x7C == ld((void*)irq_cntrl + 0x2070))
+	if(!wakeup_cpus)
 	{
+#ifdef HACK_JTAG
 		printf(" * Attempting to catch all CPUs...\n");
 
-		// Place jumps in all of the exception vectors.
+
 		for (i=0; i<sizeof(exc)/sizeof(*exc); ++i)
 			place_jump((void*)hrmor + exc[i], start_from_rom);
 
 
 		printf(" * place_jump ...\n");
 
-		// Program exception vector
 		place_jump((void*)0x8000000000000700, start_from_rom);
 
 		printf(" * while ...\n");
@@ -304,7 +294,6 @@ int start(int pir, unsigned long hrmor, unsigned long pvr)
 				while (*(volatile uint64_t*)(0x8000020000050050ULL + i * 0x1000) != 0x7C);
 			}
 
-			// IPI request
 			*(uint64_t*)(0x8000020000052010ULL) = 0x3e0078;
 		}
 
@@ -316,6 +305,7 @@ int start(int pir, unsigned long hrmor, unsigned long pvr)
 			*(uint64_t*)(0x8000020000050068ULL + i * 0x1000) = 0x74;
 			while (*(volatile uint64_t*)(0x8000020000050050ULL + i * 0x1000) != 0x7C);
 		}
+#endif
 	}
 	else
 	{
@@ -341,6 +331,9 @@ int start(int pir, unsigned long hrmor, unsigned long pvr)
 		std(sec_hold_addrs + 0x78, OCR_LAND_MAGIC);
 
 		// startup threads
+
+		void *irq_cntrl = (void*)0x8000020000050000;
+
 		std(irq_cntrl + 0x2070, 0x7c);
 		std(irq_cntrl + 0x2008, 0);
 		std(irq_cntrl + 0x2000, 4);
