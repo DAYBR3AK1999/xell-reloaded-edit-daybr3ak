@@ -111,20 +111,23 @@ int main(){
     printf("ANA Dump after Init:\n");
     dumpana();
 
-#ifdef SWIZZY_THEME
-    console_set_colors(CONSOLE_COLOR_BLACK,CONSOLE_COLOR_ORANGE); // Orange text on black bg
-#elif defined XTUDO_THEME
-    console_set_colors(CONSOLE_COLOR_BLACK,CONSOLE_COLOR_PINK); // Pink text on black bg
-#elif defined DEFAULT_THEME
-    console_set_colors(CONSOLE_COLOR_BLUE,CONSOLE_COLOR_WHITE); // White text on blue bg
-#else
-    console_set_colors(CONSOLE_COLOR_BLACK,CONSOLE_COLOR_GREEN); // Green text on black bg
-#endif
-    console_init();
+console_init();
 
-    printf("\nXeLL RELOADED - Xenon Linux Loader 2nd Stage " LONGVERSION "\n");
-    //printf("\nBuilt with GCC " GCC_VERSION " and Binutils " BINUTILS_VERSION " \n"); // User doesn't need to know this
-    do_asciiart();
+#ifdef HEXAMODS_THEME
+    // Purple-ish background + Orange text (ARGB: 0xAARRGGBB)
+    console_set_colors(0xFF020014, 0xFFFF4500);
+#elif defined(SWIZZY_THEME)
+    console_set_colors(CONSOLE_COLOR_BLACK, CONSOLE_COLOR_ORANGE);
+#elif defined(XTUDO_THEME)
+    console_set_colors(CONSOLE_COLOR_BLACK, CONSOLE_COLOR_PINK);
+#elif defined(DEFAULT_THEME)
+    console_set_colors(CONSOLE_COLOR_BLUE,  CONSOLE_COLOR_WHITE);
+#else
+    console_set_colors(CONSOLE_COLOR_BLACK, CONSOLE_COLOR_GREEN);
+#endif
+
+printf("\nHexaMods Reloaded - XeLL RELOADED 2nd Stage " LONGVERSION "\n");
+do_asciiart();
 
     //delay(3); //give the user a chance to see our splash screen <- network init should last long enough...
     
@@ -269,4 +272,5 @@ int main(){
 
     return 0;
 }
+
 
