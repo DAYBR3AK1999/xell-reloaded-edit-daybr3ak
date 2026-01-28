@@ -8,19 +8,54 @@ jobs:
     container: npmaile/libxenon-builder:latest
 
     steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-    - name: Export variables
-      run: |
-        echo DEVKITXENON=/usr/local/xenon >> $GITHUB_ENV
-        echo /usr/local/xenon/bin >> $GITHUB_PATH
-        echo /usr/local/xenon/usr/bin >> $GITHUB_PATH
-    - name: Build
-      run: make
-    - name: Build (dist)
-      run: make dist
-    - uses: actions/upload-artifact@v4
-      with:
-        name: XeLL-binaries
-        path: XeLL_Reloaded-2stages-*.tar.gz
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Export variables
+        run: |
+          echo DEVKITXENON=/usr/local/xenon >> $GITHUB_ENV
+          echo /usr/local/xenon/bin >> $GITHUB_PATH
+          echo /usr/local/xenon/usr/bin >> $GITHUB_PATH
+
+      # Optional but VERY useful to diagnose differences
+      - name: Toolchain info
+        run: |
+          which ppc64-xenon-gcc || true
+          which xenon-gcc || true
+          echo "CC=$CC"
+          xenon-gcc --version || true
+          /usr/local/xenon/bin/xenon-gcc --version || true
+          ls -la /usr/local/xenon/usr/lib | head
+
+      - name: Build release like Free60
+        run: |
+          chmod +x ./build_release || true
+          if [ -f ./build_release ]; then
+            ./build_release
+          else
+            # inline equivalent if your repo doesn't include build_release
+            GITREV=$(git describe --tags $(git rev-list --tags --max-count=1) || echo "nogit")
+            make clean
+            make
+
+            mkdir -p release/_DEBUG
+            cp -v *.bin release/ || true
+            gunzip -f *.gz || true
+            cp -v stage2.elf32 release/ || true
+            cp -v stage2.elf release/_DEBUG/ || true
+            cp -v AUTHORS CHANGELOG README release/ || true
+
+            (cd release && tar czvf ../XeLL_Reloaded-2stages-${GITREV}.tar.gz .)
+            rm -rf release
+            make clean
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: XeLL-binaries
+          path: |
+            XeLL_Reloaded-2stages-*.tar.gz
+            *.bin
+            stage2.elf
+            stage2.elf32
