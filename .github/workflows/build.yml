@@ -6,35 +6,21 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container: npmaile/libxenon-builder:latest
-    env:
-      DEVKITXENON: /usr/local/xenon
 
     steps:
-      - name: Checkout Free60 v0.993
-        uses: actions/checkout@v4
-        with:
-          repository: Free60Project/xell-reloaded
-          ref: v0.993
-          fetch-depth: 0
-
-      - name: Add toolchain to PATH
-        run: |
-          echo "$DEVKITXENON/bin" >> $GITHUB_PATH
-          echo "$DEVKITXENON/usr/bin" >> $GITHUB_PATH
-
-      - name: Build
-        run: |
-          make clean || true
-          make -j"$(nproc)"
-
-      - name: Build (dist)
-        run: make dist
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: XeLL-binaries
-          path: |
-            **/XeLL_Reloaded-2stages-*.tar.gz
-            **/*.bin
-            **/*.elf
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: Export variables
+      run: |
+        echo DEVKITXENON=/usr/local/xenon >> $GITHUB_ENV
+        echo /usr/local/xenon/bin >> $GITHUB_PATH
+        echo /usr/local/xenon/usr/bin >> $GITHUB_PATH
+    - name: Build
+      run: make
+    - name: Build (dist)
+      run: make dist
+    - uses: actions/upload-artifact@v4
+      with:
+        name: XeLL-binaries
+        path: XeLL_Reloaded-2stages-*.tar.gz
