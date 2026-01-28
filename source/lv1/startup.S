@@ -1,7 +1,4 @@
 #include "xenonsprs.h"
-#define GCC_VERSION (__GNUC__ * 10000 \
-                     + __GNUC_MINOR__ * 100 \
-                     + __GNUC_PATCHLEVEL__)
 
 .globl _start
 _start:
@@ -66,21 +63,13 @@ start_from_rom:
 
 	lis	%r3, 0x8000
 	rldicr  %r3, %r3, 32,31
-	#if GCC_VERSION >= 40900
-		oris	%r3, %r3, start@high
-	#else
-		oris	%r3, %r3, start@h
-	#endif
+	oris	%r3, %r3, start@h
 	ori	%r3, %r3, start@l
 	ld	%r2, 8(%r3)
 
 	lis	%r3, 0x8000
 	sldi	%r3, %r3, 32
-	#if GCC_VERSION >= 40900
-		oris	%r3, %r3, 1f@high
-	#else
-		oris	%r3, %r3, 1f@h
-	#endif
+	oris	%r3, %r3, 1f@h
 	ori	%r3, %r3, 1f@l
 	mtctr	%r3
 	bctr
@@ -96,11 +85,7 @@ start_from_rom:
 	b	1b
 
 start_from_libxenon:
-	#if GCC_VERSION >= 40900
-		lis	%r3, wakeup_cpus@high
-	#else
-		lis	%r3, wakeup_cpus@h
-	#endif
+	lis	%r3, wakeup_cpus@h
 	ori	%r3, %r3, wakeup_cpus@l
 	li	%r4, 1
 	std	%r4, 0(%r3)
@@ -111,11 +96,7 @@ start_from_libxenon:
 other_threads_waiter:
 	lis	%r4, 0x8000
 	rldicr	%r4, %r4, 32,31
-	#if GCC_VERSION >= 40900
-		oris	%r4, %r4, processors_online@high
-	#else
-		oris	%r4, %r4, processors_online@h
-	#endif
+	oris	%r4, %r4, processors_online@h
 	ori	%r4, %r4, processors_online@l
 	slwi	%r3, %r3, 2
 	add	%r4, %r4, %r3
@@ -124,11 +105,7 @@ other_threads_waiter:
 
 	lis	%r3, 0x8000
 	rldicr	%r3, %r3, 32,31
-	#if GCC_VERSION >= 40900
-		oris	%r3, %r3, secondary_hold_addr@high
-	#else
-		oris	%r3, %r3, secondary_hold_addr@h
-	#endif
+	oris	%r3, %r3, secondary_hold_addr@h
 	ori	%r3, %r3, secondary_hold_addr@l
 
 1:
@@ -167,15 +144,12 @@ other_threads_startup:
 	isync
 
 1:
-	li	%r4,0x30 // Clear IR/DR
+	li	%r4,0x30
 	mfmsr	%r3
 	andc	%r3,%r3,%r4
 	mtsrr1	%r3
-	#if GCC_VERSION >= 40900
-		lis	%r3, start_from_rom@high
-	#else
-		lis	%r3, start_from_rom@h
-	#endif
+
+	lis	%r3, start_from_rom@h
 	ori	%r3, %r3, start_from_rom@l
 
 	mtsrr0	%r3
@@ -240,7 +214,7 @@ jump:
 	sync
 	mtsrr0 %r6
 
-		/* switch into real mode (clear IR/DR) */
+		/* switch into real mode */
 	mfmsr %r6
 	li %r7, 0x30
 	andc %r6, %r6, %r7
