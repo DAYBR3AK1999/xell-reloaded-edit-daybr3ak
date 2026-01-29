@@ -22,7 +22,8 @@ DATA		:=	data
 INCLUDES	:=	source/lv2
 
 RELEASE='$(shell git describe --tags $(shell git rev-list --tags --max-count=1))'
-
+GCC_VERSION = $(shell $(CC) --version | grep gcc | awk '{print $$3}')
+BINUTILS_VERSION = $(shell $(PREFIX)ld --version | grep ld | awk '{print $$5}')
 #---------------------------------------------------------------------------------
 # options for code generation
 #---------------------------------------------------------------------------------
@@ -36,7 +37,7 @@ LDFLAGS	=	-g $(MACHDEP) -Wl,--gc-sections -Wl,-Map,$(notdir $@).map
 #---------------------------------------------------------------------------------
 # any extra libraries we wish to link with the project
 #---------------------------------------------------------------------------------
-LIBS	:=	-lxenon -lfat -lext2fs -lntfs -lxtaf -lm
+LIBS	:=	-lxenon -lm -lfat # -lext2fs -lntfs -lxtaf
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing
@@ -136,6 +137,8 @@ endif
 	@echo '' >> $@
 	@echo '#define VERSION RELEASE "-git-" GITREV' >> $@
 	@echo '#define LONGVERSION VERSION " " DATE " (" BLAME ")"' >> $@
+	@echo '#define GCC_VERSION "$(GCC_VERSION)"' >> $@
+	@echo '#define BINUTILS_VERSION "$(BINUTILS_VERSION)"' >> $@
 
 main.o: ../source/lv2/version.h
 

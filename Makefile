@@ -6,6 +6,7 @@ AS=$(CROSS)as
 STRIP=$(CROSS)strip
 
 LV1_DIR=source/lv1
+GITREV='$(shell git describe --tags)'
 
 # Configuration
 CFLAGS = -Wall -Os -I$(LV1_DIR) -ffunction-sections -fdata-sections \
@@ -33,7 +34,21 @@ all: $(foreach name,$(TARGETS),$(addprefix $(name).,build))
 clean:
 	@echo Cleaning...
 	@$(MAKE) --no-print-directory -f Makefile_lv2.mk clean
-	@rm -rf $(OBJS) $(foreach name,$(TARGETS),$(addprefix $(name).,bin elf)) stage2.elf32.gz
+	@rm -rf $(OBJS) $(foreach name,$(TARGETS),$(addprefix $(name).,bin elf)) stage2.elf32.gz stage2.elf32.7z
+	
+dist: clean all
+	@rm -rf XeLL_Reloaded-2stages-*.tar.gz
+	@mkdir -p release/_DEBUG
+	@cp *.bin release/
+	@gunzip *.gz
+	@cp stage2.elf release/_DEBUG
+	@cp stage2.elf32 release/
+	@cp AUTHORS release/
+	@cp CHANGELOG release/
+	@cp README release/
+	@cd release; tar czvf XeLL_Reloaded-2stages-$(GITREV).tar.gz *; mv *.tar.gz ..
+	@rm -rf release 
+	@$(MAKE) clean
 
 %.build:
 	@echo Building $* ...
@@ -60,6 +75,7 @@ xell-1f_cygnos_demon.elf xell-2f_cygnos_demon.elf: CYGNOS_DEF = -DCYGNOS
 
 stage2.elf32.gz: FORCE
 	@rm -f $@
+	@rm -rf $(OBJS)
 	@$(MAKE) --no-print-directory -f Makefile_lv2.mk
 	@$(STRIP) stage2.elf32
 	@gzip -n9 stage2.elf32
