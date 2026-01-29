@@ -32,26 +32,53 @@
 #include "config.h"
 #include "file.h"
 #include "tftp/tftp.h"
-
 #include "log.h"
 
-void do_asciiart()
+static inline void set_theme_colors_default(void)
 {
-	char *p = asciiart;
-	while (*p)
-		console_putch(*p++);
-	printf(asciitail);
+	/*
+	 * HexaMods style default: ORANGE on BLACK
+	 * Keeps your existing theme switches intact.
+	 */
+#ifdef SWIZZY_THEME
+	console_set_colors(CONSOLE_COLOR_BLACK, CONSOLE_COLOR_ORANGE); // Orange text on black bg
+#elif defined XTUDO_THEME
+	console_set_colors(CONSOLE_COLOR_BLACK, CONSOLE_COLOR_PINK);   // Pink text on black bg
+#elif defined DEFAULT_THEME
+	console_set_colors(CONSOLE_COLOR_BLUE,  CONSOLE_COLOR_WHITE);  // White text on blue bg
+#else
+	// Default to HexaMods look instead of green
+	console_set_colors(CONSOLE_COLOR_BLACK, CONSOLE_COLOR_ORANGE);  // Orange text on black bg
+#endif
 }
 
-void dumpana() {
+static inline void set_value_colors(void)
+{
+	// “terminal” values like your web page
+	console_set_colors(CONSOLE_COLOR_BLACK, CONSOLE_COLOR_GREEN);
+}
+
+void do_asciiart(void)
+{
+	// asciiart/asciitail are typically string literals -> treat as const
+	const char *p = asciiart;
+	while (*p)
+		console_putch(*p++);
+
+	// safer than printf(asciitail)
+	printf("%s", asciitail);
+}
+
+void dumpana(void)
+{
 	int i;
 	for (i = 0; i < 0x100; ++i)
 	{
 		uint32_t v;
 		xenon_smc_ana_read(i, &v);
 		printf("0x%08x, ", (unsigned int)v);
-		if ((i&0x7)==0x7)
-			printf(" // %02x\n", (unsigned int)(i &~0x7));
+		if ((i & 0x7) == 0x7)
+			printf(" // %02x\n", (unsigned int)(i & ~0x7));
 	}
 }
 
@@ -59,31 +86,32 @@ char FUSES[350]; /* this string stores the ascii dump of the fuses */
 
 unsigned char stacks[6][0x10000];
 
-void reset_timebase_task()
+void reset_timebase_task(void)
 {
-	mtspr(284,0); // TBLW
-	mtspr(285,0); // TBUW
-	mtspr(284,0);
+	mtspr(284, 0); // TBLW
+	mtspr(285, 0); // TBUW
+	mtspr(284, 0);
 }
 
-void synchronize_timebases()
+void synchronize_timebases(void)
 {
 	xenon_thread_startup();
-	
-	std((void*)0x200611a0,0); // stop timebase
-	
+
+	std((void*)0x200611a0, 0); // stop timebase
+
 	int i;
-	for(i=1;i<6;++i){
-		xenon_run_thread_task(i,&stacks[i][0xff00],(void *)reset_timebase_task);
-		while(xenon_is_thread_task_running(i));
+	for (i = 1; i < 6; ++i) {
+		xenon_run_thread_task(i, &stacks[i][0xff00], (void*)reset_timebase_task);
+		while (xenon_is_thread_task_running(i));
 	}
-	
+
 	reset_timebase_task(); // don't forget thread 0
-			
-	std((void*)0x200611a0,0x1ff); // restart timebase
+
+	std((void*)0x200611a0, 0x1ff); // restart timebase
 }
-	
-int main(){
+
+int main(void)
+{
 	LogInit();
 	int i;
 
@@ -92,7 +120,7 @@ int main(){
 
 	// linux needs this
 	synchronize_timebases();
-	
+
 	// irqs preinit (SMC related)
 	*(volatile uint32_t*)0xea00106c = 0x1000000;
 	*(volatile uint32_t*)0xea001064 = 0x10;
@@ -101,34 +129,33 @@ int main(){
 	xenon_smc_start_bootanim();
 
 	// flush console after each outputted char
-	setbuf(stdout,NULL);
+	setbuf(stdout, NULL);
 
 	xenos_init(VIDEO_MODE_AUTO);
 
 	printf("ANA Dump after Init:\n");
 	dumpana();
 
-#ifdef SWIZZY_THEME
-	console_set_colors(CONSOLE_COLOR_BLACK,CONSOLE_COLOR_ORANGE); // Orange text on black bg
-#elif defined XTUDO_THEME
-	console_set_colors(CONSOLE_COLOR_BLACK,CONSOLE_COLOR_PINK); // Pink text on black bg
-#elif defined DEFAULT_THEME
-	console_set_colors(CONSOLE_COLOR_BLUE,CONSOLE_COLOR_WHITE); // White text on blue bg
-#else
-	console_set_colors(CONSOLE_COLOR_BLACK,CONSOLE_COLOR_GREEN); // Green text on black bg
-#endif
+	/*
+	 * NOTE: some console implementations reset colors during console_init().
+	 * So init first, then apply our theme colors.
+	 */
 	console_init();
+	set_theme_colors_default();
 
-	printf("\nXeLL - Xenon linux loader second stage " LONGVERSION "\n");
+	// Branding header
+	printf("\nHexaMods XeLL RELOADED - Second Stage " LONGVERSION "\n");
+	printf("Coded by DAYBR3AK // RGH 4 Ever\n\n");
 
 	do_asciiart();
 
 	//delay(3); //give the user a chance to see our splash screen <- network init should last long enough...
-	
+
 	xenon_sound_init();
 
-	if (xenon_get_console_type() != REV_CORONA_PHISON) //Not needed for MMC type of consoles! ;)
+	if (xenon_get_console_type() != REV_CORONA_PHISON) // Not needed for MMC type of consoles! ;)
 	{
+		set_theme_colors_default();
 		printf(" * nand init\n");
 		sfcx_init();
 		if (sfc.initialized != SFCX_INITIALIZED)
@@ -143,6 +170,7 @@ int main(){
 
 #ifndef NO_NETWORKING
 
+	set_theme_colors_default();
 	printf(" * network init\n");
 	network_init();
 
@@ -152,63 +180,69 @@ int main(){
 
 #endif
 
+	set_theme_colors_default();
 	printf(" * usb init\n");
 	usb_init();
 	usb_do_poll();
 
+	set_theme_colors_default();
 	printf(" * sata hdd init\n");
 	xenon_ata_init();
 
+	set_theme_colors_default();
 	printf(" * sata dvd init\n");
 	xenon_atapi_init();
 
 	mount_all_devices();
 	int device_list_size = findDevices();
+	(void)device_list_size;
+
 	/* display some cpu info */
+	set_theme_colors_default();
 	printf(" * CPU PVR: %08x\n", mfspr(287));
 
 #ifndef NO_PRINT_CONFIG
+	// Section title in theme color
+	set_theme_colors_default();
 	printf(" * FUSES - write them down and keep them safe:\n");
-	char *fusestr = FUSES;
-	for (i=0; i<12; ++i){
-		u64 line;
-		unsigned int hi,lo;
 
-		line=xenon_secotp_read_line(i);
-		hi=line>>32;
-		lo=line&0xffffffff;
+	// Build fuse string
+	char *fusestr = FUSES;
+	for (i = 0; i < 12; ++i) {
+		u64 line;
+		unsigned int hi, lo;
+
+		line = xenon_secotp_read_line(i);
+		hi = (unsigned int)(line >> 32);
+		lo = (unsigned int)(line & 0xffffffff);
 
 		fusestr += sprintf(fusestr, "fuseset %02d: %08x%08x\n", i, hi, lo);
 	}
-	printf(FUSES);
+
+	// Print values in green (terminal style)
+	set_value_colors();
+	printf("%s", FUSES); // safer than printf(FUSES)
 
 	print_cpu_dvd_keys();
+
+	// Back to theme for network info label/output
+	set_theme_colors_default();
 	network_print_config();
 #endif
+
 	/* Stop logging and save it to first USB Device found that is writeable */
 	LogDeInit();
-	//extern char device_list[STD_MAX][10];
 
-	//for (i = 0; i < device_list_size; i++)
-	//{
-	//	if (strncmp(device_list[i], "ud", 2) == 0)
-	//	{
-	//		char tmp[STD_MAX + 8];
-	//		sprintf(tmp, "%sxell.log", device_list[i]);
-	//		if (LogWriteFile(tmp) == 0)
-	//			i = device_list_size;
-	//	}
-	//}
-	
+	printf("\n");
+	set_theme_colors_default();
+	printf(" * Looking for files on local media and TFTP...\n\n");
 
-	printf("\n * Looking for files on local media and TFTP...\n\n");
-	for(;;){
+	for (;;) {
 		fileloop();
-		tftp_loop(); //less likely to find something...
+		tftp_loop(); // less likely to find something...
 		console_clrline();
 		mount_all_devices();
 	}
 
 	return 0;
 }
-
